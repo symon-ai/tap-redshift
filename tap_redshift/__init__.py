@@ -1,5 +1,6 @@
 import copy
 import datetime
+import pytz
 import ssl
 import sys
 import time
@@ -64,6 +65,7 @@ def discover_catalog(conn, db_schema):
                         FROM INFORMATION_SCHEMA.Tables t
                         JOIN INFORMATION_SCHEMA.Columns c
                           ON c.table_name = t.table_name
+                         AND c.table_schema = t.table_schema
                        WHERE t.table_schema = %s
                     ORDER BY c.table_name, c.ordinal_position"""
 
@@ -105,7 +107,7 @@ def discover_catalog(conn, db_schema):
         is_view = table_types.get(table_name) == 'VIEW'
         db_name = conn.get_dsn_parameters()['dbname']
         metadata = create_column_metadata(
-            db_name, cols, is_view, table_name, key_properties)
+            db_name, db_schema, cols, is_view, key_properties)
         tap_stream_id = '{}.{}'.format(
             db_name, qualified_table_name)
         entry = CatalogEntry(
@@ -172,14 +174,13 @@ def schema_for_column(c):
 
 
 def create_column_metadata(
-        db_name, cols, is_view,
-        table_name, key_properties=[]):
+        db_name, schema_name, cols, is_view,
+        key_properties=[]):
     mdata = metadata.new()
     mdata = metadata.write(mdata, (), 'selected-by-default', False)
-    mdata = metadata.write(
-            mdata, (), 'table-key-properties', key_properties)
+    mdata = metadata.write(mdata, (), 'table-key-properties', key_properties)
     mdata = metadata.write(mdata, (), 'is-view', is_view)
-    mdata = metadata.write(mdata, (), 'schema-name', table_name)
+    mdata = metadata.write(mdata, (), 'schema-name', schema_name)
     mdata = metadata.write(mdata, (), 'database-name', db_name)
     valid_rep_keys = []
 
@@ -279,7 +280,8 @@ def sync_table(connection, catalog_entry, state):
         params = {}
 
         if start_date is not None:
-            formatted_start_date = utils.strptime(start_date)
+            formatted_start_date = datetime.datetime.strptime(
+                start_date, '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=pytz.UTC)
 
         replication_key = metadata.to_map(catalog_entry.metadata).get(
             (), {}).get('replication-key')
