@@ -22,6 +22,7 @@ The json file requires the following attributes;
 * ``user``
 * ``password``
 * ``start_date`` (Notation: yyyy-mm-ddThh:mm:ssZ)
+* ``ssl`` (set to True to require SSL)
 
 And an optional attribute;
 
@@ -38,7 +39,8 @@ Example:
         "user": "REDSHIFT_USER",
         "password": "REDSHIFT_PASSWORD",
         "start_date": "REDSHIFT_START_DATE",
-        "schema": "REDSHIFT_SCHEMA"
+        "schema": "REDSHIFT_SCHEMA",
+        "ssl": "True"
     }
 
 
