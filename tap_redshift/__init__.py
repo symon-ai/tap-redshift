@@ -90,7 +90,7 @@ def discover_catalog(conn, db_schema):
     table_pks = {k: [t[1] for t in v]
                  for k, v in groupby(pk_specs, key=lambda t: t[0])}
 
-    table_types = dict(table_spec)
+    table_types = dict(table_specs)
 
     for items in table_columns:
         table_name = items['name']
@@ -176,12 +176,8 @@ def create_column_metadata(
         table_name, key_properties=[]):
     mdata = metadata.new()
     mdata = metadata.write(mdata, (), 'selected-by-default', False)
-    if not is_view:
-        mdata = metadata.write(
+    mdata = metadata.write(
             mdata, (), 'table-key-properties', key_properties)
-    else:
-        mdata = metadata.write(
-            mdata, (), 'view-key-properties', key_properties)
     mdata = metadata.write(mdata, (), 'is-view', is_view)
     mdata = metadata.write(mdata, (), 'schema-name', table_name)
     mdata = metadata.write(mdata, (), 'database-name', db_name)
@@ -283,8 +279,7 @@ def sync_table(connection, catalog_entry, state):
         params = {}
 
         if start_date is not None:
-            formatted_start_date = datetime.datetime.strptime(
-                start_date, '%Y-%m-%dT%H:%M:%SZ').astimezone()
+            formatted_start_date = utils.strptime(start_date)
 
         replication_key = metadata.to_map(catalog_entry.metadata).get(
             (), {}).get('replication-key')
