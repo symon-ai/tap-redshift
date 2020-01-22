@@ -124,7 +124,10 @@ def discover_catalog(conn, db_schema):
 
 def do_discover(conn, db_schema):
     LOGGER.info("Running discover")
-    discover_catalog(conn, db_schema).dump()
+    catalog = discover_catalog(conn, db_schema)
+    if len(catalog.streams) == 0:
+        raise Exception("Discovered no tables. Check your user's permissions and schema configuration value and try again.")
+    catalog.dump()
     LOGGER.info("Completed discover")
 
 
