@@ -476,7 +476,7 @@ def main():
     args = utils.parse_args(REQUIRED_CONFIG_KEYS)
     CONFIG.update(args.config)
     connection = open_connection(args.config)
-    db_schema = args.config.get('schema', 'public')
+    db_schema = args.config.get('schema') or 'public'
     if args.discover:
         do_discover(connection, db_schema)
     elif args.catalog:
