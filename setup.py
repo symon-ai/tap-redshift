@@ -64,6 +64,7 @@ setup(
         'flake8>=2.6.0,<3.4.1a',
         'pyhamcrest>=1.9.0,<2.0a',
         'pytest>=3.2.3,<4.0a',
+        'pytz>=2021.3',
       ],
       entry_points={
         'console_scripts': [
