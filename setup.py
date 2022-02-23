@@ -52,6 +52,7 @@ setup(
         'singer-python==5.0.4',
         'backoff==1.3.2',
         'psycopg2-binary',
+        'pytz>=2021.3',
       ],
       setup_requires=[
         'pytest-runner>=2.11,<3.0a',
@@ -64,7 +65,6 @@ setup(
         'flake8>=2.6.0,<3.4.1a',
         'pyhamcrest>=1.9.0,<2.0a',
         'pytest>=3.2.3,<4.0a',
-        'pytz>=2021.3',
       ],
       entry_points={
         'console_scripts': [
