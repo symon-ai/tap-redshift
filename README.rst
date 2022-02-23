@@ -6,6 +6,11 @@ tap-redshift
 `Singer <https://singer.io>`_ tap that extracts data from a `Redshift <https://aws.amazon.com/documentation/redshift/>`_ database and produces JSON-formatted data following the Singer spec.
 
 
+Forked to symon-ai/tap-redshift to fix build problems
+=====================================================
+* tap-redshift could not find ``pytz`` library. Solved by naming ``pytz`` in setup.py.
+* tap-redshift could not find path to ``pg_config``. Solved by importing ``psycopg2-binary`` instead of ``psycopg2``.
+
 Usage
 =====
 tap-redshift assumes you have a connection to Redshift and requires Python 3.6+.
