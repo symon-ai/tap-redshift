@@ -89,11 +89,12 @@ def resolve_catalog(discovered, catalog, state):
 
         # These are the columns we need to select
         columns = desired_columns(selected, discovered_table.schema)
+        ordered_columns = list(filter(lambda x: x in columns, catalog_entry.schema.properties.keys()))
 
         schema = Schema(
             type='object',
             properties={col: discovered_table.schema.properties[col]
-                        for col in columns}
+                        for col in ordered_columns}
         )
 
         result.streams.append(CatalogEntry(
