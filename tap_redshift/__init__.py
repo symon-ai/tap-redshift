@@ -110,24 +110,28 @@ def discover_catalog(conn, db_schema):
             db_name, db_schema, cols, is_view, key_properties)
         tap_stream_id = '{}.{}'.format(
             db_name, qualified_table_name)
-        entry = CatalogEntry(
-            tap_stream_id=tap_stream_id,
-            stream=table_name,
-            schema=schema,
-            table=qualified_table_name,
-            metadata=metadata)
+        entry = {
+            'tap_stream_id': tap_stream_id,
+            'table_name': qualified_table_name,
+            'schema': schema.to_dict(),
+            'stream': table_name,
+            'metadata': metadata,
+            'column_order': [str(column) for column in schema.properties]
+        }
 
         entries.append(entry)
 
-    return Catalog(entries)
+    catalog = {'streams': entries}
+
+    return catalog
 
 
 def do_discover(conn, db_schema):
     LOGGER.info("Running discover")
     catalog = discover_catalog(conn, db_schema)
-    if len(catalog.streams) == 0:
+    if len(catalog['streams']) == 0:
         raise Exception("Discovered no tables. Check your user's permissions and schema configuration value and try again.")
-    catalog.dump()
+    json.dump(catalog, sys.stdout, indent=4)
     LOGGER.info("Completed discover")
 
 
@@ -474,19 +478,49 @@ def build_state(raw_state, catalog):
     return state
 
 
+def get_column_orders():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('-c', '--config')
+    parser.add_argument('-s', '--state')
+    parser.add_argument('-p', '--properties')
+    parser.add_argument('--catalog')
+    parser.add_argument('-d', '--discover')
+
+    args = parser.parse_args()
+
+    def load_json(path):
+        with open(path) as fil:
+            return json.load(fil)
+
+    if args.catalog:
+        catalog = load_json(args.catalog)
+    elif args.properties:
+        catalog = load_json(args.properties)
+
+    column_order_map = {}
+    for catalog_entry in catalog['streams']:
+        column_order_map[catalog_entry['stream']] = catalog_entry['column_order']
+
+    return column_order_map
+
+
 @utils.handle_top_exception(LOGGER)
 def main():
     args = utils.parse_args(REQUIRED_CONFIG_KEYS)
+    column_order_map = get_column_orders()
     CONFIG.update(args.config)
     connection = open_connection(args.config)
     db_schema = args.config.get('schema') or 'public'
     if args.discover:
         do_discover(connection, db_schema)
     elif args.catalog:
+        setattr(args.catalog, 'column_order_map', column_order_map)
         state = build_state(args.state, args.catalog)
         do_sync(connection, db_schema, args.catalog, state)
     elif args.properties:
         catalog = Catalog.from_dict(args.properties)
+        setattr(catalog, 'column_order_map', column_order_map)
         state = build_state(args.state, catalog)
         do_sync(connection, db_schema, catalog, state)
     else:
