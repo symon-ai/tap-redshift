@@ -482,11 +482,10 @@ def build_state(raw_state, catalog):
 def get_column_orders():
     parser = argparse.ArgumentParser()
 
+    # Only added arguments needed for running extraction command.
     parser.add_argument('-c', '--config')
-    parser.add_argument('-s', '--state')
     parser.add_argument('-p', '--properties')
     parser.add_argument('--catalog')
-    parser.add_argument('-d', '--discover')
 
     args = parser.parse_args()
 
@@ -509,17 +508,18 @@ def get_column_orders():
 @utils.handle_top_exception(LOGGER)
 def main():
     args = utils.parse_args(REQUIRED_CONFIG_KEYS)
-    column_order_map = get_column_orders()
     CONFIG.update(args.config)
     connection = open_connection(args.config)
     db_schema = args.config.get('schema') or 'public'
     if args.discover:
         do_discover(connection, db_schema)
     elif args.catalog:
+        column_order_map = get_column_orders()
         setattr(args.catalog, 'column_order_map', column_order_map)
         state = build_state(args.state, args.catalog)
         do_sync(connection, db_schema, args.catalog, state)
     elif args.properties:
+        column_order_map = get_column_orders()
         catalog = Catalog.from_dict(args.properties)
         setattr(catalog, 'column_order_map', column_order_map)
         state = build_state(args.state, catalog)
