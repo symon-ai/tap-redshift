@@ -495,7 +495,7 @@ def get_column_orders():
 
     if args.catalog:
         catalog = load_json(args.catalog)
-    elif args.properties:
+    else:
         catalog = load_json(args.properties)
 
     column_order_map = {}
