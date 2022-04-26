@@ -76,6 +76,12 @@ def resolve_catalog(discovered, catalog, state):
 
     result = Catalog(streams=[])
 
+    # Return type of discover_catalog has been changed from Catalog class to dict.
+    # Cast it back to Catalog class
+    discovered = Catalog.from_dict(discovered)
+    # Order of columns for each stream
+    column_order_map = catalog.column_order_map
+
     # Iterate over the streams in the input catalog and match each one up
     # with the same stream in the discovered catalog.
     for catalog_entry in streams:
@@ -89,7 +95,7 @@ def resolve_catalog(discovered, catalog, state):
 
         # These are the columns we need to select
         columns = desired_columns(selected, discovered_table.schema)
-        ordered_columns = list(filter(lambda x: x in columns, catalog_entry.schema.properties.keys()))
+        ordered_columns = list(filter(lambda x: x in columns, column_order_map[catalog_entry.stream]))
 
         schema = Schema(
             type='object',
