@@ -280,7 +280,6 @@ def sync_table(connection, catalog_entry, state):
 
     tap_stream_id = catalog_entry.tap_stream_id
     LOGGER.info('Beginning sync for {} table'.format(tap_stream_id))
-    LOGGER.info(json.dumps(catalog_entry))
     with connection.cursor() as cursor:
         schema, table = catalog_entry.table.split('.')
         LOGGER.info("selected columns: " + ','.join('"{}"'.format(c)
