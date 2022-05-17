@@ -17,7 +17,7 @@ from singer.catalog import Catalog, CatalogEntry
 from singer.schema import Schema
 from tap_redshift import resolve
 
-__version__ = '1.0.0b10-symon-ai'
+__version__ = '1.0.0b11-symon-ai'
 
 LOGGER = singer.get_logger()
 
@@ -261,7 +261,7 @@ def row_to_record(catalog_entry, version, row, columns, time_extracted):
             elem = elem.isoformat('T') + 'Z'
         row_to_persist += (elem,)
     return singer.RecordMessage(
-        stream=catalog_entry.stream,
+        stream=catalog_entry.tap_stream_id,
         record=dict(zip(columns, row_to_persist)),
         version=version,
         time_extracted=time_extracted)
@@ -305,7 +305,7 @@ def sync_table(connection, catalog_entry, state):
             stream_version
         )
         activate_version_message = singer.ActivateVersionMessage(
-            stream=catalog_entry.stream,
+            stream=catalog_entry.tap_stream_id,
             version=stream_version
         )
 
@@ -396,7 +396,7 @@ def generate_messages(conn, db_schema, catalog, state):
 
         # Emit a SCHEMA message before we sync any records
         yield singer.SchemaMessage(
-            stream=catalog_entry.stream,
+            stream=catalog_entry.tap_stream_id,
             schema=catalog_entry.schema.to_dict(),
             key_properties=key_properties,
             bookmark_properties=bookmark_properties)
