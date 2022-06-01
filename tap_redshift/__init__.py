@@ -175,6 +175,7 @@ def schema_for_column(c):
         result.format = 'date'
 
     elif column_type in OTHER_TYPES:
+        LOGGER.info("in other types")
         result.type = 'string'
 
     else:
