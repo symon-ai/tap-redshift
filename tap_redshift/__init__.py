@@ -178,7 +178,7 @@ def schema_for_column(c):
                         description='Unsupported column type {}'
                         .format(column_type))
 
-    if column_nullable == 'yes':
+    if column_nullable == 'yes' and result.type != None:
         result.type = ['null', result.type]
 
     return result
