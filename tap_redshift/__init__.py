@@ -47,6 +47,8 @@ DATE_TYPES = {'date'}
 DATETIME_TYPES = {'timestamp', 'timestamptz',
                   'timestamp without time zone', 'timestamp with time zone'}
 
+OTHER_TYPES = {'geometry'}
+
 CONFIG = {}
 
 
@@ -171,6 +173,9 @@ def schema_for_column(c):
     elif column_type in DATE_TYPES:
         result.type = 'string'
         result.format = 'date'
+
+    elif column_type in OTHER_TYPES:
+        result.type = 'string'
 
     else:
         result = Schema(None,
