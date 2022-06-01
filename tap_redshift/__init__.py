@@ -144,6 +144,8 @@ def schema_for_column(c):
     inclusion = 'available'
     result = Schema(inclusion=inclusion)
 
+    LOGGER.info("datatype: " + str(column_type))
+
     if column_type == 'bool':
         result.type = 'boolean'
 
