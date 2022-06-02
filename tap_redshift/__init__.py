@@ -17,7 +17,7 @@ from singer.catalog import Catalog, CatalogEntry
 from singer.schema import Schema
 from tap_redshift import resolve
 
-__version__ = '1.0.0b11-symon-ai'
+__version__ = '1.0.1'
 
 LOGGER = singer.get_logger()
 
@@ -147,8 +147,6 @@ def schema_for_column(c):
     inclusion = 'available'
     result = Schema(inclusion=inclusion)
 
-    LOGGER.info("datatype: " + str(column_type))
-
     if column_type == 'bool':
         result.type = 'boolean'
 
@@ -176,7 +174,6 @@ def schema_for_column(c):
         result.format = 'date'
 
     elif column_type in GEOMETRY:
-        LOGGER.info("in other types")
         result.type = 'string'
         result.format = 'symon.geo'
 
