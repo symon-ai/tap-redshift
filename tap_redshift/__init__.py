@@ -183,7 +183,7 @@ def schema_for_column(c):
                         description='Unsupported column type {}'
                         .format(column_type))
 
-    if column_nullable == 'yes' and result.type != None:
+    if column_nullable == 'yes' and result.type is not None:
         result.type = ['null', result.type]
 
     return result
@@ -275,8 +275,6 @@ def row_to_record(catalog_entry, version, row, columns, time_extracted):
 
 
 def sync_table(connection, catalog_entry, state):
-    LOGGER.info(str(catalog_entry.schema))
-    LOGGER.info(catalog_entry.schema)
     columns = list(catalog_entry.schema.properties.keys())
     start_date = CONFIG.get('start_date')
     formatted_start_date = None
@@ -290,14 +288,12 @@ def sync_table(connection, catalog_entry, state):
     tap_stream_id = catalog_entry.tap_stream_id
     LOGGER.info('Beginning sync for {} table'.format(tap_stream_id))
 
-
     with connection.cursor() as cursor:
         schema, table = catalog_entry.table.split('.')
         select = 'SELECT {} FROM {}.{}'.format(
             ','.join(SELECT_FORMAT.get(catalog_entry.schema.properties[c].format, '"{}"').format(c) for c in columns),
             '"{}"'.format(schema),
             '"{}"'.format(table))
-        LOGGER.info('select: ' + str(select))
         params = {}
 
         if start_date is not None:
