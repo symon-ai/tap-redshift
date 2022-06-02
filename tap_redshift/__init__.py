@@ -183,8 +183,11 @@ def schema_for_column(c):
                         description='Unsupported column type {}'
                         .format(column_type))
 
-    if column_nullable == 'yes' and result.type is not None:
-        result.type = ['null', result.type]
+    if column_nullable == 'yes':
+        if result.type is not None:
+            result.type = ['null', result.type]
+        else:
+            result.type = ['null']
 
     return result
 
