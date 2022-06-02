@@ -17,7 +17,7 @@ from singer.catalog import Catalog, CatalogEntry
 from singer.schema import Schema
 from tap_redshift import resolve
 
-__version__ = '1.0.0b11-symon-ai'
+__version__ = '1.0.1'
 
 LOGGER = singer.get_logger()
 
@@ -46,6 +46,9 @@ DATE_TYPES = {'date'}
 
 DATETIME_TYPES = {'timestamp', 'timestamptz',
                   'timestamp without time zone', 'timestamp with time zone'}
+
+GEOMETRY = {'geometry'}
+SELECT_FORMAT = { 'symon.geo': 'ST_AsEWKT("{}")' }
 
 CONFIG = {}
 
@@ -170,6 +173,10 @@ def schema_for_column(c):
         result.type = 'string'
         result.format = 'date'
 
+    elif column_type in GEOMETRY:
+        result.type = 'string'
+        result.format = 'symon.geo'
+
     else:
         result = Schema(None,
                         inclusion='unsupported',
@@ -177,7 +184,10 @@ def schema_for_column(c):
                         .format(column_type))
 
     if column_nullable == 'yes':
-        result.type = ['null', result.type]
+        if result.type is not None:
+            result.type = ['null', result.type]
+        else:
+            result.type = ['null']
 
     return result
 
@@ -280,10 +290,11 @@ def sync_table(connection, catalog_entry, state):
 
     tap_stream_id = catalog_entry.tap_stream_id
     LOGGER.info('Beginning sync for {} table'.format(tap_stream_id))
+
     with connection.cursor() as cursor:
         schema, table = catalog_entry.table.split('.')
         select = 'SELECT {} FROM {}.{}'.format(
-            ','.join('"{}"'.format(c) for c in columns),
+            ','.join(SELECT_FORMAT.get(catalog_entry.schema.properties[c].format, '"{}"').format(c) for c in columns),
             '"{}"'.format(schema),
             '"{}"'.format(table))
         params = {}
