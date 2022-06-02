@@ -47,7 +47,8 @@ DATE_TYPES = {'date'}
 DATETIME_TYPES = {'timestamp', 'timestamptz',
                   'timestamp without time zone', 'timestamp with time zone'}
 
-OTHER_TYPES = {'geometry'}
+GEOMETRY = {'geometry'}
+SELECT_FORMAT = { 'symon.geo': 'ST_AsEWKT("{}")' }
 
 CONFIG = {}
 
@@ -174,9 +175,10 @@ def schema_for_column(c):
         result.type = 'string'
         result.format = 'date'
 
-    elif column_type in OTHER_TYPES:
+    elif column_type in GEOMETRY:
         LOGGER.info("in other types")
         result.type = 'string'
+        result.format = 'symon.geo'
 
     else:
         result = Schema(None,
@@ -276,6 +278,8 @@ def row_to_record(catalog_entry, version, row, columns, time_extracted):
 
 
 def sync_table(connection, catalog_entry, state):
+    LOGGER.info(str(catalog_entry.schema))
+    LOGGER.info(catalog_entry.schema)
     columns = list(catalog_entry.schema.properties.keys())
     start_date = CONFIG.get('start_date')
     formatted_start_date = None
@@ -288,12 +292,15 @@ def sync_table(connection, catalog_entry, state):
 
     tap_stream_id = catalog_entry.tap_stream_id
     LOGGER.info('Beginning sync for {} table'.format(tap_stream_id))
+
+
     with connection.cursor() as cursor:
         schema, table = catalog_entry.table.split('.')
         select = 'SELECT {} FROM {}.{}'.format(
-            ','.join('"{}"'.format(c) for c in columns),
+            ','.join(SELECT_FORMAT.get(catalog_entry.schema.properties[c].format, '"{}"').format(c) for c in columns),
             '"{}"'.format(schema),
             '"{}"'.format(table))
+        LOGGER.info('select: ' + str(select))
         params = {}
 
         if start_date is not None:
