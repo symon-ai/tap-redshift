@@ -292,40 +292,28 @@ For subsequent runs, you can then invoke the incremental replication passing the
                 target-datadotworld -c config-dw.json > state.json
 
 
-All steps in one Makefile
-=========================
+Running locally
+===============
 
-For your convenience, all the steps mentioned above are captured in the ``Makefile`` below.
-This example uses ``target-datadotworld`` but can be modified to use any other Singer target.
 
-.. code-block:: Makefile
+Ensure poetry is installed on your machine. 
 
-    # Requires python 3.6
-    install:
-        pip3 install tap-redshift; \
-        pip3 install target-datadotworld
+* This command will return the installed version of poetry if it is installed.
+.. code-block:: shell
+    poetry --version
 
-    # Catalog discovery
-    discover:
-        tap-redshift \
-            -c config-redshift.json -d > catalog.json
+* If not, install poetry using the following commands (from https://python-poetry.org/docs/#installation):
+.. code-block:: shell
+    curl -sSL https://install.python-poetry.org | python3 -
+    PATH=~/.local/bin:$PATH
 
-    # Full sync
-    fullsync:
-        tap-redshift \
-            -c config-redshift.json \
-            --catalog catalog.json | \
-                target-datadotworld -c config-dw.json > state.json
 
-    # Incremental sync
-    sync:
-        tail -1 state.json > latest-state.json; \
-        tap-redshift \
-          -c config-redshift.json \
-          --catalog catalog.json \
-          -s latest-state.json | \
-            target-datadotworld -c config-dw.json > state.json
+Within the `tap-redshift` directory, install dependencies:
+.. code-block:: shell
+    poetry install
 
----
+Then run the tap:
+.. code-block:: shell
+    poetry run tap-redshift <options>
 
 Copyright &copy; 2019 Stitch
