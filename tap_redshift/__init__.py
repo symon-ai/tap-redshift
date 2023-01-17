@@ -237,6 +237,7 @@ def open_connection(config):
         "port": config["port"],
         "password": config["password"],
         "host": config["host"],
+        "connect_timeout": 10
     }
 
     if config.get("ssl") == "true":
