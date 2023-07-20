@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tap-redshift"
-version = "1.0.3"
+version = "1.0.4"
 description = "Singer.io tap for extracting data from redshift"
 authors = ["data.world"]
 classifiers = ["Programming Language :: Python :: 3 :: Only"]
