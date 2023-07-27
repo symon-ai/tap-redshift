@@ -135,8 +135,7 @@ def do_discover(conn, db_schema):
     LOGGER.info("Running discover")
     catalog = discover_catalog(conn, db_schema)
     if len(catalog['streams']) == 0:
-        raise Exception(
-            "Discovered no tables. Check your user's permissions and schema configuration value and try again.")
+        raise SymonException(f'Sorry, we couldn\'t find any table in the database "{conn.get_dsn_parameters()["dbname"]}". Please check and try again.', 'odbc.TableNotFound')
     json.dump(catalog, sys.stdout, indent=4)
     LOGGER.info("Completed discover")
 
@@ -249,13 +248,14 @@ def open_connection(config):
     try:
         connection = psycopg2.connect(**psql_creds)
     except psycopg2.OperationalError as e:
-        if 'password authentication failed for user' in str(e):
+        message = str(e)
+        if 'password authentication failed for user' in message:
             raise SymonException('The username and password provided are incorrect. Please try again.', 'odbc.AuthenticationFailed')
-        if f'database "{config["dbname"]}" does not exist' in str(e):
+        if f'database "{config["dbname"]}" does not exist' in message:
             raise SymonException(f'The database "{config["dbname"]}" does not exist. Please ensure it is correct.', 'odbc.DatabaseDoesNotExist')
-        if f'could not translate host name "{config["host"]}" to address' in str(e):
+        if f'could not translate host name "{config["host"]}" to address' in message:
             raise SymonException(f'The host "{config["host"]}" was not found. Please check the host name and try again.', 'odbc.HostNotFound')
-        if f'timeout expired' in str(e):
+        if f'timeout expired' in message:
             raise SymonException('Timed out connecting to database. Please ensure all the form values are correct.', 'odbc.ConnectionTimeout')
         raise
 
