@@ -253,8 +253,10 @@ def open_connection(config):
             raise SymonException('The username and password provided are incorrect. Please try again.', 'odbc.AuthenticationFailed')
         if f'database "{config["dbname"]}" does not exist' in message:
             raise SymonException(f'The database "{config["dbname"]}" does not exist. Please ensure it is correct.', 'odbc.DatabaseDoesNotExist')
-        if f'could not translate host name "{config["host"]}" to address' in message or 'Is the server running on that host and accepting TCP/IP connections?' in message:
+        if f'could not translate host name "{config["host"]}" to address' in message:
             raise SymonException(f'The host "{config["host"]}" was not found. Please check the host name and try again.', 'odbc.HostNotFound')
+        if 'Is the server running on that host and accepting TCP/IP connections?' in message:
+            raise SymonException(f'Sorry, we couldn\'t connect to the host "{config["host"]}". Please check the host name and try again.', 'odbc.InvalidHost')
         if f'timeout expired' in message:
             raise SymonException('Timed out connecting to database. Please ensure all the form values are correct.', 'odbc.ConnectionTimeout')
         raise
