@@ -5,6 +5,8 @@ import ssl
 import sys
 import time
 import argparse
+import traceback
+import json
 from itertools import groupby
 
 import pendulum
@@ -16,6 +18,7 @@ from singer import metadata, utils
 from singer.catalog import Catalog, CatalogEntry
 from singer.schema import Schema
 from tap_redshift import resolve
+from tap_redshift.symon_exception import SymonException
 
 LOGGER = singer.get_logger()
 
@@ -132,8 +135,7 @@ def do_discover(conn, db_schema):
     LOGGER.info("Running discover")
     catalog = discover_catalog(conn, db_schema)
     if len(catalog['streams']) == 0:
-        raise Exception(
-            "Discovered no tables. Check your user's permissions and schema configuration value and try again.")
+        raise SymonException(f'Sorry, we couldn\'t find any table in the database "{conn.get_dsn_parameters()["dbname"]}". Please check and try again.', 'odbc.TableNotFound')
     json.dump(catalog, sys.stdout, indent=4)
     LOGGER.info("Completed discover")
 
@@ -243,7 +245,21 @@ def open_connection(config):
     if config.get("ssl") == "true":
         psql_creds["sslmode"] = "require"
 
-    connection = psycopg2.connect(**psql_creds)
+    try:
+        connection = psycopg2.connect(**psql_creds)
+    except psycopg2.OperationalError as e:
+        message = str(e)
+        if 'password authentication failed for user' in message:
+            raise SymonException('The username and password provided are incorrect. Please try again.', 'odbc.AuthenticationFailed')
+        if f'database "{config["dbname"]}" does not exist' in message:
+            raise SymonException(f'The database "{config["dbname"]}" does not exist. Please ensure it is correct.', 'odbc.DatabaseDoesNotExist')
+        if f'could not translate host name "{config["host"]}" to address' in message:
+            raise SymonException(f'The host "{config["host"]}" was not found. Please check the host name and try again.', 'odbc.HostNotFound')
+        if 'Is the server running on that host and accepting TCP/IP connections?' in message:
+            raise SymonException(f'Sorry, we couldn\'t connect to the host "{config["host"]}". Please ensure all the connection form values are correct.', 'odbc.ConnectionFailed')
+        if f'timeout expired' in message:
+            raise SymonException('Timed out connecting to database. Please ensure all the connection form values are correct.', 'odbc.ConnectionTimeout')
+        raise
 
     LOGGER.info("Connected to Redshift")
     return connection
@@ -519,25 +535,58 @@ def get_column_orders():
 
 @utils.handle_top_exception(LOGGER)
 def main():
-    args = utils.parse_args(REQUIRED_CONFIG_KEYS)
-    CONFIG.update(args.config)
-    connection = open_connection(args.config)
-    db_schema = args.config.get('schema') or 'public'
-    if args.discover:
-        do_discover(connection, db_schema)
-    elif args.catalog:
-        column_order_map = get_column_orders()
-        setattr(args.catalog, 'column_order_map', column_order_map)
-        state = build_state(args.state, args.catalog)
-        do_sync(connection, db_schema, args.catalog, state)
-    elif args.properties:
-        column_order_map = get_column_orders()
-        catalog = Catalog.from_dict(args.properties)
-        setattr(catalog, 'column_order_map', column_order_map)
-        state = build_state(args.state, catalog)
-        do_sync(connection, db_schema, catalog, state)
-    else:
-        LOGGER.info("No properties were selected")
+    try:
+        # used for storing error info to write if error occurs
+        error_info = None
+        args = utils.parse_args(REQUIRED_CONFIG_KEYS)
+        CONFIG.update(args.config)
+        connection = open_connection(args.config)
+        db_schema = args.config.get('schema') or 'public'
+        if args.discover:
+            do_discover(connection, db_schema)
+        elif args.catalog:
+            column_order_map = get_column_orders()
+            setattr(args.catalog, 'column_order_map', column_order_map)
+            state = build_state(args.state, args.catalog)
+            do_sync(connection, db_schema, args.catalog, state)
+        elif args.properties:
+            column_order_map = get_column_orders()
+            catalog = Catalog.from_dict(args.properties)
+            setattr(catalog, 'column_order_map', column_order_map)
+            state = build_state(args.state, catalog)
+            do_sync(connection, db_schema, catalog, state)
+        else:
+            LOGGER.info("No properties were selected")
+    except SymonException as e:
+        error_info = {
+            'message': str(e),
+            'code': e.code,
+            'traceback': traceback.format_exc()
+        }
+
+        if e.details is not None:
+            error_info['details'] = e.details
+        raise
+    except BaseException as e:
+        error_info = {
+            'message': str(e),
+            'traceback': traceback.format_exc()
+        }
+        raise
+    finally:
+        if error_info is not None:
+            error_file_path = args.config.get('error_file_path', None)
+            if error_file_path is not None:
+                try:
+                    with open(error_file_path, 'w', encoding='utf-8') as fp:
+                        json.dump(error_info, fp)
+                except:
+                    pass
+            # log error info as well in case file is corrupted
+            error_info_json = json.dumps(error_info)
+            error_start_marker = args.config.get('error_start_marker', '[tap_error_start]')
+            error_end_marker = args.config.get('error_end_marker', '[tap_error_end]')
+            LOGGER.info(f'{error_start_marker}{error_info_json}{error_end_marker}')
 
 
 if __name__ == '__main__':
