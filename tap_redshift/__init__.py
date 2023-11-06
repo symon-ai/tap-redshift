@@ -53,6 +53,10 @@ SELECT_FORMAT = { 'symon.geo': 'ST_AsEWKT("{}")' }
 
 CONFIG = {}
 
+# for symon error logging
+ERROR_START_MARKER = '[tap_error_start]'
+ERROR_END_MARKER = '[tap_error_end]'
+
 
 def discover_catalog(conn, db_schema):
     '''Returns a Catalog describing the structure of the database.'''
@@ -250,7 +254,7 @@ def open_connection(config):
     except psycopg2.OperationalError as e:
         message = str(e)
         if 'password authentication failed for user' in message:
-            raise SymonException('The username and password provided are incorrect. Please try again.', 'odbc.AuthenticationFailed')
+            raise SymonException('The username or password provided is incorrect. Please check and try again.', 'odbc.AuthenticationFailed')
         if f'database "{config["dbname"]}" does not exist' in message:
             raise SymonException(f'The database "{config["dbname"]}" does not exist. Please ensure it is correct.', 'odbc.DatabaseDoesNotExist')
         if f'could not translate host name "{config["host"]}" to address' in message:
@@ -558,35 +562,42 @@ def main():
         else:
             LOGGER.info("No properties were selected")
     except SymonException as e:
+        exc_type, exc_value, exc_traceback = sys.exc_info()
         error_info = {
-            'message': str(e),
+            'message': traceback.format_exception_only(exc_type, exc_value)[-1],
             'code': e.code,
-            'traceback': traceback.format_exc()
+            'traceback': "".join(traceback.format_tb(exc_traceback))
         }
 
         if e.details is not None:
             error_info['details'] = e.details
         raise
     except BaseException as e:
+        exc_type, exc_value, exc_traceback = sys.exc_info()
         error_info = {
-            'message': str(e),
-            'traceback': traceback.format_exc()
+            'message': traceback.format_exception_only(exc_type, exc_value)[-1],
+            'traceback': "".join(traceback.format_tb(exc_traceback))
         }
         raise
     finally:
         if error_info is not None:
-            error_file_path = args.config.get('error_file_path', None)
-            if error_file_path is not None:
-                try:
-                    with open(error_file_path, 'w', encoding='utf-8') as fp:
-                        json.dump(error_info, fp)
-                except:
-                    pass
-            # log error info as well in case file is corrupted
-            error_info_json = json.dumps(error_info)
-            error_start_marker = args.config.get('error_start_marker', '[tap_error_start]')
-            error_end_marker = args.config.get('error_end_marker', '[tap_error_end]')
-            LOGGER.info(f'{error_start_marker}{error_info_json}{error_end_marker}')
+            try:
+                error_file_path = args.config.get('error_file_path', None)
+                if error_file_path is not None:
+                    try:
+                        with open(error_file_path, 'w', encoding='utf-8') as fp:
+                            json.dump(error_info, fp)
+                    except:
+                        pass
+                # log error info as well in case file is corrupted
+                error_info_json = json.dumps(error_info)
+                error_start_marker = args.config.get('error_start_marker', ERROR_START_MARKER)
+                error_end_marker = args.config.get('error_end_marker', ERROR_END_MARKER)
+                LOGGER.info(f'{error_start_marker}{error_info_json}{error_end_marker}')
+            except:
+                # error occurred before args was parsed correctly, log the error
+                error_info_json = json.dumps(error_info)
+                LOGGER.info(f'{ERROR_START_MARKER}{error_info_json}{ERROR_END_MARKER}')
 
 
 if __name__ == '__main__':
